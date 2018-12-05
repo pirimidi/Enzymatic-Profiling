@@ -41,7 +41,7 @@ warning('off', 'all');
 work_dir = pwd;
 
 % Define barcode list.
-barcodes = {'comp3', 'fv2', 'rep3'};
+barcodes = {'comp3', 'fv2', 'rep3', 'rand', 'flan'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                                                                         %
@@ -52,13 +52,13 @@ barcodes = {'comp3', 'fv2', 'rep3'};
 disp('--> DIRECTORY NAVIGATION SECTION');
 
 % Navigate to 'pol-bar' MAT-file directory.
-data_dir = strcat(work_dir, '/data/mat_files/cons');
+data_dir = strcat(work_dir, '/data/mat_files/');
 cd(data_dir);
 
 disp(['--> IN DIRECTORY: ' data_dir]);
 
 % Read in all 'experiment' folder names one-by-one.
-list = dir('pol6*_*cons*.mat');
+list = dir('pol*_*cons_align*.mat');
 
 % Figure counter.
 counter = 1;
@@ -81,146 +81,99 @@ end
 
 % Iterate through all 'pol' folders.
  for e = 1:length(list) 
-     
+
+    % Load nanopore data structure per experimental set (pol-bar).
+    load(list(e).name);
+    disp(['--> MAT-FILE LOADED: ' list(e).name]);
+    ss = strsplit(list(e).name, '.');
+
+    % Define array container for 'coi' and grouping variable array.
+    COI = []; ge = []; 
+        
     % Iterate through all three barcodes.
     for bar = 1:length(barcodes)  
-        
-        % Define array container for fixed 'bar' and grouping variable array.
-        BAR = []; GE = []; 
-        BAR_2 = []; GE_2 = []; 
-        BAR_3 = []; GE_3 = [];
-
-        % Define array container for 'coi' and grouping variable array.
-        COI = []; ge = []; 
-        COI_2 = []; ge_2 = []; 
-        COI_3 = []; ge_3 = [];
-
-        % Load nanopore data structure per experimental set (pol-bar).
-        load(list(e).name);
-        disp(['--> MAT-FILE LOADED: ' list(e).name]);
-        ss = strsplit(list(e).name, '.');
 
         % Iterate through all 'experiment' folders for (pol-)bar.
         for exp = 1:length(cons_list(bar).experiment)
 
             % Iterate through all experiments per (pol-)bar and plot desired field. 
             pb = cons_list(bar).experiment(exp).s;
+            
+            % Find filtered pores with valid 'cons_identity' value.
+            i_1 = extractfield(pb, 'cons_identity') > 0;   
+            pb_f1 = pb(i_1);
+            
+            % Only look at structures with elements (can be empty).
+            if length(pb_f1) > 1
+            
+                % Find 'coi' values.
+                norm = extractfield(pb_f1, 'cons_identity')./100;
 
-            % Find 'coi' values.
-            norm = extractfield(pb, 'cons_identity')./100;
-            norm_2 = extractfield(pb, 'cons_identity_2')./100;
-            norm_3 = extractfield(pb, 'cons_identity_3')./100;
-
-            % Generate container arrays for all experiments.
-            COI = [COI; norm'];
-            COI_2 = [COI_2; norm_2'];
-            COI_3 = [COI_3; norm_3'];
+                % Generate container arrays for all experiments.
+                COI = [COI; norm'];
             
-            % Find align copy values for each 'coi'.
-            align_length = extractfield(pb, 'alignment_length');
-            
-            % Update concatinated grouping variable array.
-            for b = 1:length(norm)
-                ge = [ge; 1];
-            end 
-            
-            for b_2 = 1:length(norm_2)
-                ge_2 = [ge_2; 2];
-            end 
-            
-            for b_3 = 1:length(norm_3)
-                ge_3 = [ge_3; 3];
-            end
-            
-        end
-
-        % Generate container array for 'pol-bar' combination (fix bar).
-        BAR = [BAR; COI];
-        BAR_2 = [BAR_2; COI_2];
-        BAR_3 = [BAR_3; COI_3];
-        
-        % Update concatinated grouping variable array.
-        GE = [GE; ge];
-        GE_2 = [GE_2; ge_2];
-        GE_3 = [GE_3; ge_3]; 
+                % Update concatinated grouping variable array.
+                for b = 1:length(norm)
+                    ge = [ge; bar];
+                end 
                 
-        % Generate figure for each pol-bar combination.
-        figure(counter);
-
-        % Create dwell time (s) boxplot of all filtered events (exp).
-%         CategoricalScatterplot([BAR; BAR_2; BAR_3], [GE; GE_2; GE_3], ...
-%                                'WhiskerLine', false, ...
-%                                'BoxColor', [0.8471 0.8627 0.8392], ...
-%                                'WhiskerColor',[0.8235 0.7412 0.0392]);
-                           
-        CategoricalScatterplot([BAR; BAR_2; BAR_3], [GE; GE_2; GE_3], ...
-                               'Marker', 'o', ...
-                               'MarkerSize', 1, ...
-                               'FillMarker', false, ...
-                               'spreadWidth', 0.05, ...
-                               'boxWidth', 0.1, ...
-                               'WhiskerLine', false, ...
-                               'BoxColor', [0.8471 0.8627 0.8392], ...
-                               'WhiskerColor',[0 0 1]);
-        
-%         CategoricalScatterplot([BAR; BAR_2; BAR_3], [GE; GE_2; GE_3], ...
-%                                'Marker', 'o', ...
-%                                'MarkerSize', 2, ...
-%                                'FillMarker', true, ...
-%                                'BoxColor', [0.8471 0.8627 0.8392], ...
-%                                'BoxEdgeColor', [0 0 1], ...
-%                                'MedianColor', [0 0 1], ...
-%                                'WhiskerColor', [0.8235 0.7412 0.0392], ...
-%                                'BoxAlpha', 0, ...
-%                                'BoxLineStyle', '-', ...
-%                                'WhiskerLine', false, ...
-%                                'MedianLineStyle', '-', ...
-%                                'WhiskerLineStyle', '-', ...
-%                                'BoxLineWidth', 2, ...
-%                                'MedianLineWidth', 2, ...
-%                                'WhiskerLineWidth', 2);
-              
-        grid;
-        title('consensus identity vs. barcode id');
-        xlabel('barcode id');
-        ylabel('consensus identity');
-        ylim([0 1.1]);
-        %xtickangle(45)
-        %legend(['pores = ', num2str(length(unique(GE)))], ['comparisons = ', num2str(length(EX))]);
-        %figureFullScreen(counter);
-
-        % Determine legend entries for each case.                      
-        if strcmp(barcodes{bar}, 'comp3')                            
-            bar2 = barcodes{2};
-            bar3 = barcodes{3};
-
-        elseif strcmp(barcodes{bar}, 'fv2')
-            bar2 = barcodes{1};
-            bar3 = barcodes{3};
-
-        else
-            bar2 = barcodes{1};
-            bar3 = barcodes{2};
-
-        end
-
-        % Display legend.
-        %legend(barcodes{bar}, bar2, bar3);
-
-        % Save plot.
-        pp = strsplit(ss{1}, '_');
-        fn = [pp{1}, '_', barcodes{bar}, '_scat'];
-        savefig([fn, '.fig']);
-        print('-dbmp', [fn, '.bmp']);
-
-        % Update counter.
-        counter = counter + 1;
-
-        disp(['--> PROCESSED DATA SET: ' fn]); 
-        
+            end
+        end        
     end   
-end    
+ end    
     
+% Generate figure for each pol-bar combination.
+figure(1);
+
+% Create dwell time (s) boxplot of all filtered events (exp).
+% CategoricalScatterplot(COI, ge, ...
+%                        'WhiskerLine', false, ...
+%                        'BoxColor', [0.8471 0.8627 0.8392], ...
+%                        'WhiskerColor',[0.8235 0.7412 0.0392]);
+
+COI
+ge
+
+CategoricalScatterplot(COI, ge, ...
+                       'Marker', 'o', ...
+                       'MarkerSize', 1, ...
+                       'FillMarker', false, ...
+                       'spreadWidth', 0.05, ...
+                       'boxWidth', 0.1, ...
+                       'WhiskerLine', false, ...
+                       'BoxColor', [0.8471 0.8627 0.8392], ...
+                       'WhiskerColor',[0 0 1]);
+
+% CategoricalScatterplot(COI, ge, ...
+%                        'Marker', 'o', ...
+%                        'MarkerSize', 2, ...
+%                        'FillMarker', true, ...
+%                        'BoxColor', [0.8471 0.8627 0.8392], ...
+%                        'BoxEdgeColor', [0 0 1], ...
+%                        'MedianColor', [0 0 1], ...
+%                        'WhiskerColor', [0.8235 0.7412 0.0392], ...
+%                        'BoxAlpha', 0, ...
+%                        'BoxLineStyle', '-', ...
+%                        'WhiskerLine', false, ...
+%                        'MedianLineStyle', '-', ...
+%                        'WhiskerLineStyle', '-', ...
+%                        'BoxLineWidth', 2, ...
+%                        'MedianLineWidth', 2, ...
+%                        'WhiskerLineWidth', 2);
+
+grid;
+title('consensus identity vs. experimental id');
+xlabel('experimental id');
+ylabel('consensus identity');
+ylim([0 1.1]);
+
+% Save plot.
+fn = 'pol-bar_mixing';
+savefig([fn, '.fig']);
+print('-dbmp', [fn, '.bmp']);
+
+disp(['--> PROCESSED DATA SET: ' fn]); 
+        
 % Move all figures to 'plots' directory.
 movefile('*.fig', cdir);
 movefile('*.bmp', cdir);
